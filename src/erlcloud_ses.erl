@@ -12,7 +12,6 @@
 %%  * ListIdentityPolicies
 %%  * ListVerifiedEmailAddresses (deprecated; use ListIdentities)
 %%  * PutIdentityPolicy
-%%  * SendRawEmail
 %%  * VerifyEmailAddress (deprecated; use VerifyEmailIdentity)
 %%
 %% @end
@@ -34,6 +33,8 @@
 -export([list_identities/0, list_identities/1, list_identities/2]).
 
 -export([send_email/4, send_email/5, send_email/6]).
+
+-export([send_raw_email/2]).
 
 -export([set_identity_dkim_enabled/2, set_identity_dkim_enabled/3]).
 -export([set_identity_feedback_forwarding_enabled/2, set_identity_feedback_forwarding_enabled/3]).
@@ -462,7 +463,7 @@ list_identities(Opts, Config) ->
 
 send_email(Destination, Body, Subject, Source) ->
     send_email(Destination, Body, Subject, Source, [], default_config()).
-                                                       
+
 send_email(Destination, Body, Subject, Source, #aws_config{} = Config) ->
     send_email(Destination, Body, Subject, Source, [], Config);
 send_email(Destination, Body, Subject, Source, Opts) ->
@@ -471,7 +472,7 @@ send_email(Destination, Body, Subject, Source, Opts) ->
 %%------------------------------------------------------------------------------
 %% @doc
 %% SES API:
-%% [http://docs.aws.amazon.com/ses/2010-12-01/APIReference/API_SendEmail.html]
+%% [https://docs.aws.amazon.com/ses/latest/APIReference/API_SendEmail.html]
 %%
 %% ===Example===
 %%
@@ -519,6 +520,14 @@ send_email(Destination, Body, Subject, Source, Opts, Config) ->
     case ses_request(Config, "SendEmail", Params) of
         {ok, Doc} ->
             {ok, erlcloud_xml:decode([{message_id, "SendEmailResult/MessageId", text}], Doc)};
+        {error, Reason} -> {error, Reason}
+    end.
+
+send_raw_email(RawEmail, Config) ->
+    Params = encode_params([{raw_message, RawEmail}]),
+    case ses_request(Config, "SendRawEmail", Params) of
+        {ok, Doc} ->
+            {ok, erlcloud_xml:decode([{message_id, "SendRawEmailResult/MessageId", text}], Doc)};
         {error, Reason} -> {error, Reason}
     end.
 
@@ -794,6 +803,8 @@ encode_params([{source, Source} | T], Acc) when is_list(Source); is_binary(Sourc
     encode_params(T, [{"Source", Source} | Acc]);
 encode_params([{subject, Subject} | T], Acc) ->
     encode_params(T, encode_content("Message.Subject", Subject, Acc));
+encode_params([{raw_message, Data} | T], Acc) ->
+    encode_params(T, encode_content("RawMessage", base64:encode(Data), Acc));
 encode_params([Option | _], _Acc) ->
     error({erlcloud_ses, {invalid_parameter, Option}}).
 
