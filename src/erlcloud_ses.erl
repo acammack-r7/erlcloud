@@ -34,7 +34,7 @@
 
 -export([send_email/4, send_email/5, send_email/6]).
 
--export([send_raw_email/2]).
+-export([send_raw_email/2, send_raw_email/3]).
 
 -export([set_identity_dkim_enabled/2, set_identity_dkim_enabled/3]).
 -export([set_identity_feedback_forwarding_enabled/2, set_identity_feedback_forwarding_enabled/3]).
@@ -531,6 +531,14 @@ send_raw_email(RawEmail, Config) ->
         {error, Reason} -> {error, Reason}
     end.
 
+send_raw_email(RawEmail, Recipients, Config) ->
+    Params = encode_params([{raw_message, RawEmail}, {destinations, Recipients}]),
+    case ses_request(Config, "SendRawEmail", Params) of
+        {ok, Doc} ->
+            {ok, erlcloud_xml:decode([{message_id, "SendRawEmailResult/MessageId", text}], Doc)};
+        {error, Reason} -> {error, Reason}
+    end.
+
 
 %%%------------------------------------------------------------------------------
 %%% SetIdentityDkimEnabled
@@ -775,6 +783,8 @@ encode_params([{body, Body} | T], Acc) ->
     encode_params(T, encode_body(Body, Acc));
 encode_params([{destination, Destination} | T], Acc) ->
     encode_params(T, encode_destination(Destination, Acc));
+encode_params([{destinations, Destinations} | T], Acc) ->
+    encode_params(T, encode_list("Destinations", Destinations, Acc));
 encode_params([{email_address, EmailAddress} | T], Acc) when is_list(EmailAddress); is_binary(EmailAddress) ->
     encode_params(T, [{"EmailAddress", EmailAddress} | Acc]);
 encode_params([{dkim_enabled, DkimEnabled} | T], Acc) when is_boolean(DkimEnabled) ->
