@@ -34,7 +34,7 @@
 
 -export([send_email/4, send_email/5, send_email/6]).
 
--export([send_raw_email/2, send_raw_email/3]).
+-export([send_raw_email/2, send_raw_email/3, send_raw_email/4]).
 
 -export([set_identity_dkim_enabled/2, set_identity_dkim_enabled/3]).
 -export([set_identity_feedback_forwarding_enabled/2, set_identity_feedback_forwarding_enabled/3]).
@@ -539,6 +539,13 @@ send_raw_email(RawEmail, Recipients, Config) ->
         {error, Reason} -> {error, Reason}
     end.
 
+send_raw_email(RawEmail, Recipients, Opts, Config) ->
+    Params = encode_params([{raw_message, RawEmail}, {destinations, Recipients}, {send_email_opts, Opts}]),
+    case ses_request(Config, "SendRawEmail", Params) of
+        {ok, Doc} ->
+            {ok, erlcloud_xml:decode([{message_id, "SendRawEmailResult/MessageId", text}], Doc)};
+        {error, Reason} -> {error, Reason}
+    end.
 
 %%%------------------------------------------------------------------------------
 %%% SetIdentityDkimEnabled
